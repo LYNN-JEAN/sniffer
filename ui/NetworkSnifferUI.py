@@ -271,7 +271,6 @@ class NetworkSnifferUI(QWidget):
         self.packet_details.clear()
 
     def display_packet(self, packet_info):
-        print(packet_info["packet"])
         self.packet_data.append(packet_info)
         row_position = self.packet_table.rowCount()
         self.packet_table.insertRow(row_position)

@@ -42,15 +42,14 @@ class PacketSnifferThread(QThread):
             dst = packet[Ether].dst
             type = packet[Ether].type
             types = {0x0800: 'IPv4', 0x0806: 'ARP', 0x86dd: 'IPv6', 0x88cc: 'LLDP', 0x891D: 'TTE'}
-            print(type)
             if type in types:
                 proto = types[type]
             else:
-                proto = 'LOOP'  # 协议
+                proto = 'LOOP'
             # IP
             if proto == 'IPv4':
                 protos = {1: 'ICMP', 2: 'IGMP', 4: 'IP', 6: 'TCP', 8: 'EGP', 9: 'IGP', 17: 'UDP', 41: 'IPv6', 50: 'ESP',
-                          89: 'OSPF'}
+                          51: 'AH', 58: 'ICMPv6', 89: 'OSPF'}
                 src = packet[IP].src
                 dst = packet[IP].dst
                 proto = packet[IP].proto
@@ -58,16 +57,22 @@ class PacketSnifferThread(QThread):
                     proto = protos[proto]
             # tcp
             if TCP in packet:
-                protos_tcp = {80: 'Http', 443: 'Https', 23: 'Telnet', 21: 'Ftp', 20: 'ftp_data', 22: 'SSH', 25: 'SMTP'}
+                protos = {80: 'Http', 443: 'Https', 23: 'Telnet', 21: 'Ftp', 20: 'ftp_data', 22: 'SSH', 25: 'SMTP',
+                              110: 'POP3', 143: 'IMAP'}
                 sport = packet[TCP].sport
                 dport = packet[TCP].dport
-                if sport in protos_tcp:
-                    proto = protos_tcp[sport]
-                elif dport in protos_tcp:
-                    proto = protos_tcp[dport]
+                if sport in protos:
+                    proto = protos[sport]
+                elif dport in protos:
+                    proto = protos[dport]
             elif UDP in packet:
-                if packet[UDP].sport == 53 or packet[UDP].dport == 53:
-                    proto = 'DNS'
+                protos = {53: 'DNS', 69: 'TFTP'}
+                sport = packet[UDP].sport
+                dport = packet[UDP].dport
+                if sport in protos:
+                    proto = protos[sport]
+                elif dport in protos:
+                    proto = protos[dport]
 
             # 校验和
             crc = None
@@ -75,7 +80,6 @@ class PacketSnifferThread(QThread):
                 ip = packet[IP]
                 ip_chksum = ip.chksum
                 ip.chksum = None
-                # ip.show()
                 ip_check = IP(raw(ip)).chksum
                 ip.chksum = ip_chksum
                 # print(ip_chksum, "计算出的IP首部校验和：", ip_check)
@@ -89,9 +93,8 @@ class PacketSnifferThread(QThread):
                     # print(tcp_chksum, "计算出的TCP检验和：", tcp_check)
 
                     if ip_check == ip_chksum and tcp_check == tcp_chksum:
-                        crc = "IP与TCP的校验和检查通过\r\nIP的校验和为：{chksum_ip}\r\nTCP的检验和为：" \
-                                      "{chksum_tcp}".format(chksum_ip=ip_chksum, chksum_tcp=tcp_chksum)
-                        # print(information)
+                        crc = ("IP与TCP的校验和检查通过\r\nIP的校验和为：{chksum_ip}\r\nTCP的检验和为：{chksum_tcp}"
+                               .format(chksum_ip=ip_chksum, chksum_tcp=tcp_chksum))
                     else:
                         crc = "IP或TCP的校验和出错"
                 elif UDP in packet:
@@ -101,12 +104,10 @@ class PacketSnifferThread(QThread):
 
                     udp_check = UDP(raw(udp)).chksum
                     udp.chksum = udp_chksum
-                    # print(udp_chksum, "计算出的UDP检验和：", udp_check)
 
                     if ip_check == ip_chksum and udp_check == udp_chksum:
-                        crc = "IP与UDP的校验和检查通过\r\nIP的校验和为：" \
-                                      "{chksum_ip}\r\nUDP的检验和为：{chksum_udp}".format(chksum_ip=ip_chksum,                                                      chksum_udp=udp_chksum)
-                        # print(information)
+                        crc = ("IP与UDP的校验和检查通过\r\nIP的校验和为：{chksum_ip}\r\nUDP的检验和为：{chksum_udp}"
+                               .format(chksum_ip=ip_chksum, chksum_udp=udp_chksum))
                     else:
                         crc = "IP或UDP的校验和出错"
 
