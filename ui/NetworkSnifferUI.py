@@ -1,3 +1,4 @@
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTextEdit, QLabel, QComboBox, QMessageBox, \
@@ -130,6 +131,7 @@ class NetworkSnifferUI(QWidget):
         # 捕获数据包表格
         self.packet_table = QTableWidget(0, 7)
         self.packet_table.setHorizontalHeaderLabels(["NO.", "Time", "Source", "Destination", "Protocol", "Length", "Info"])
+        self.packet_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.packet_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         # 设置选择行为为整行
@@ -155,8 +157,6 @@ class NetworkSnifferUI(QWidget):
         self.packet_details = QTextEdit(self)
         self.packet_details.setReadOnly(True)
         self.packet_details.setFont(QFont("Consolas", 10))
-
-        
 
         # 主布局
         layout = QVBoxLayout()
@@ -214,6 +214,7 @@ class NetworkSnifferUI(QWidget):
                 self.start_button.setEnabled(False)
                 self.pause_button.setEnabled(True)
                 self.stop_button.setEnabled(True)
+                self.save_button.setEnabled(False)
         else:  # 暂停后继续
             if self.sniffer_thread:
                 self.sniffer_thread.resume_sniffing()  # 恢复嗅探
@@ -299,7 +300,7 @@ class NetworkSnifferUI(QWidget):
             else:
                 if last_tree_entry:
                     child_item = QTreeWidgetItem(last_tree_entry)
-                    child_item.setText(0, line)
+                    child_item.setText(0, line.strip())
 
         self.packet_details.setText(hexdump(packet, dump=True))
 
@@ -319,7 +320,7 @@ class NetworkSnifferUI(QWidget):
             self.packet_table.setRowCount(0)
             for i, packet_info in enumerate(self.packet_data):
                 self.packet_table.insertRow(i)
-                self.packet_table.setItem(i, 0, QTableWidgetItem(str(i + 1)))  # NO.
+                self.packet_table.setItem(i, 0, QTableWidgetItem(str(i+1)))  # NO.
                 self.packet_table.setItem(i, 1, QTableWidgetItem(packet_info.get("time", "Unknown")))  # Time
                 self.packet_table.setItem(i, 2, QTableWidgetItem(packet_info.get("src", "Unknown")))  # Source
                 self.packet_table.setItem(i, 3, QTableWidgetItem(packet_info.get("dst", "Unknown")))  # Destination
@@ -338,6 +339,8 @@ class NetworkSnifferUI(QWidget):
                 self.packet_table.setRowCount(0)
                 j = 0
                 for i, packet_info in enumerate(self.packet_data):
+                    if j >= len(packets):
+                        break
                     # 检查数据包是否满足过滤器条件
                     if packet_info["packet"] == packets[j]:
                         # 如果满足条件，显示数据包
@@ -358,8 +361,6 @@ class NetworkSnifferUI(QWidget):
                         mp[row_position] = i
                         row_position += 1
                         j += 1
-                        if j >= len(packets):
-                            break
                 self.packet_table.cellClicked.connect(lambda row, col: self.show_packet_details(mp[row]))
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Invalid filter: {e}")
@@ -396,3 +397,9 @@ class NetworkSnifferUI(QWidget):
             self.timer.stop()  # 停止定时器
         else:
             self.crc_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 更新透明度
+
+    # 重写键盘事件
+    def keyPressEvent(self, event):
+        # ctrl+S 保存
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_S and self.save_button.isEnabled():
+            self.save_capture()
