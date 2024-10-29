@@ -56,7 +56,7 @@ class PacketSnifferThread(QThread):
                 if proto in protos:
                     proto = protos[proto]
             # tcp
-            if TCP in packet:
+            if packet.haslayer(TCP):
                 protos = {80: 'Http', 443: 'Https', 23: 'Telnet', 21: 'Ftp', 20: 'ftp_data', 22: 'SSH', 25: 'SMTP',
                               110: 'POP3', 143: 'IMAP'}
                 sport = packet[TCP].sport
@@ -65,7 +65,7 @@ class PacketSnifferThread(QThread):
                     proto = protos[sport]
                 elif dport in protos:
                     proto = protos[dport]
-            elif UDP in packet:
+            elif packet.haslayer(UDP):
                 protos = {53: 'DNS', 69: 'TFTP'}
                 sport = packet[UDP].sport
                 dport = packet[UDP].dport
