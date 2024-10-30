@@ -4,9 +4,12 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QMessageBox, QLineEdit, QDialog, QDialogButtonBox
 
+from core.PacketSnifferThread import filter2bpf
+
 
 # 校验BPF表达式
 def check_bpf(filter_expression):
+    filter_expression = filter2bpf(filter_expression)
     command = ['windump', '-d', '-i', '1', filter_expression]
 
     try:
@@ -26,7 +29,7 @@ class AddFilterDialog(QDialog):
     def __init__(self, names, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Add New Filter")
-        self.setFixedWidth(600)
+        self.setMinimumWidth(600)
 
         self.setWindowIcon(QIcon("image/logo.png"))
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)

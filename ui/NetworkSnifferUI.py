@@ -3,13 +3,15 @@ from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTextEdit, QLabel, QComboBox, QMessageBox, \
     QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QTreeWidget, QTreeWidgetItem, QSizePolicy, \
-    QListView, QLineEdit, QDialog
+    QListView, QLineEdit, QDialog, QMenu
 from scapy.all import sniff
 from scapy.arch.windows import get_windows_if_list
 from scapy.utils import hexdump, wrpcap
 
-from core.PacketSnifferThread import PacketSnifferThread
+from core.PacketSnifferThread import PacketSnifferThread, filter2bpf
 from ui.FilterDialog import FilterDialog
+
+from ui.StreamDialog import StreamDialog
 
 
 class NetworkSnifferUI(QWidget):
@@ -142,12 +144,16 @@ class NetworkSnifferUI(QWidget):
                 background-color: #d9ebf9;  /* 悬停时行高亮的颜色 */
             }
             QTableWidget::item:selected {
-                background-color: #66CC66;  /* 选中时行高亮的颜色 */
+                background-color: #66cc66;  /* 选中时行高亮的颜色 */
             }
         """)
 
         # 绑定表格单击事件
         self.packet_table.cellClicked.connect(lambda row, col: self.show_packet_details(row))
+        self.packet_table.currentCellChanged.connect(lambda row, col: self.show_packet_details(row))
+        # 绑定表格右键菜单
+        self.packet_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.packet_table.customContextMenuRequested.connect(self.show_context_menu)
 
         # 捕获数据包的详细内容
         self.packet_tree = QTreeWidget(self)
@@ -197,7 +203,9 @@ class NetworkSnifferUI(QWidget):
 
             # 清空之前的捕获内容
             self.packet_data.clear()
+            self.packet_table.currentCellChanged.disconnect()
             self.packet_table.setRowCount(0)
+            self.packet_table.currentCellChanged.connect(lambda row, col: self.show_packet_details(row))
             self.packet_tree.clear()
             self.packet_details.clear()
             self.file_saved = False
@@ -267,7 +275,9 @@ class NetworkSnifferUI(QWidget):
 
     def refresh(self):
         self.packet_data.clear()
+        self.packet_table.currentCellChanged.disconnect()
         self.packet_table.setRowCount(0)
+        self.packet_table.currentCellChanged.connect(lambda row, col: self.show_packet_details(row))
         self.packet_tree.clear()
         self.packet_details.clear()
 
@@ -305,10 +315,11 @@ class NetworkSnifferUI(QWidget):
         self.packet_details.setText(hexdump(packet, dump=True))
 
         # 校验和信息
-        self.crc_label.setText(self.packet_data[row]["crc"])
-        self.opacity = 1.0  # 重置透明度
-        self.crc_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 设置初始透明度
-        self.crc_label.setVisible(True)
+        if self.packet_data[row]["crc"] is not None:
+            self.crc_label.setText(self.packet_data[row]["crc"])
+            self.opacity = 1.0  # 重置透明度
+            self.crc_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 设置初始透明度
+            self.crc_label.setVisible(True)
 
         self.timer.start(15)  # 15秒后消失
 
@@ -317,7 +328,9 @@ class NetworkSnifferUI(QWidget):
             return
         filter_expression = self.filter_after_text.text().strip()  # 获取用户输入的显示过滤器
         if filter_expression == "":
+            self.packet_table.currentCellChanged.disconnect()
             self.packet_table.setRowCount(0)
+            self.packet_table.currentCellChanged.connect(lambda row, col: self.show_packet_details(row))
             for i, packet_info in enumerate(self.packet_data):
                 self.packet_table.insertRow(i)
                 self.packet_table.setItem(i, 0, QTableWidgetItem(str(i+1)))  # NO.
@@ -328,15 +341,18 @@ class NetworkSnifferUI(QWidget):
                 self.packet_table.setItem(i, 5, QTableWidgetItem(packet_info.get("len", "Unknown")))  # Length
                 self.packet_table.setItem(i, 6, QTableWidgetItem(packet_info.get("info", "Unknown")))  # Info
             self.packet_table.cellClicked.connect(lambda row, col: self.show_packet_details(row))
+            self.packet_table.currentCellChanged.connect(lambda row, col: self.show_packet_details(row))
             return
         if filter_expression:
             try:
                 mp = dict()
                 # 应用过滤器
                 row_position = 0
-                packets = sniff(offline=[packet["packet"] for packet in self.packet_data], filter=filter_expression)
+                packets = sniff(offline=[packet["packet"] for packet in self.packet_data], filter=filter2bpf(filter_expression))
                 # 清空当前表格内容
+                self.packet_table.currentCellChanged.disconnect()
                 self.packet_table.setRowCount(0)
+                self.packet_table.currentCellChanged.connect(lambda row, col: self.show_packet_details(row))
                 j = 0
                 for i, packet_info in enumerate(self.packet_data):
                     if j >= len(packets):
@@ -362,10 +378,11 @@ class NetworkSnifferUI(QWidget):
                         row_position += 1
                         j += 1
                 self.packet_table.cellClicked.connect(lambda row, col: self.show_packet_details(mp[row]))
+                self.packet_table.currentCellChanged.connect(lambda row, col: self.show_packet_details(mp[row]))
             except Exception as e:
-                QMessageBox.warning(self, "Error", f"Invalid filter: {e}")
+                QMessageBox.warning(self, "Error", f"Invalid filter")
         else:
-            QMessageBox.warning(self, "Error", "Filter expression is empty.")
+            QMessageBox.warning(self, "Error", "Filter expression is empty")
 
     def load_filters(self):
         # 从文件或数据库中加载保存的过滤器
@@ -398,8 +415,26 @@ class NetworkSnifferUI(QWidget):
         else:
             self.crc_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 更新透明度
 
+    # 创建右键菜单
+    def show_context_menu(self, pos):
+        menu = QMenu(self)
+        view_action = menu.addAction("Tracing TCP Flows")
+        id = self.packet_table.currentRow()
+        if self.packet_data[id]["stream"] is None:
+            view_action.setEnabled(False)  # 非TCP包禁用
+        view_action.triggered.connect(self.tracing_tcp_flows)
+        menu.exec_(self.packet_table.mapToGlobal(pos))
+
+    # 追踪TCP流
+    def tracing_tcp_flows(self):
+        id = self.packet_table.currentRow()
+        stream_id = self.packet_data[id]["stream"]
+        window = StreamDialog(stream_id, [packet for packet in self.packet_data if packet["stream"] == stream_id], self)
+        window.show()
+
     # 重写键盘事件
     def keyPressEvent(self, event):
         # ctrl+S 保存
         if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_S and self.save_button.isEnabled():
             self.save_capture()
+        super().keyPressEvent(event)
