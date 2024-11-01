@@ -107,32 +107,6 @@ class PacketSnifferThread(QThread):
 
             # 校验和
             crc = None
-            # if packet.haslayer(IPv6):
-            #     ipv6 = packet[IPv6]
-            #     if packet.haslayer(TCP):
-            #         tcp = packet[TCP]
-            #         tcp_chksum = tcp.chksum
-            #         tcp.chksum = None
-            #
-            #         tcp_check = (IPv6(src=ipv6.src, dst=ipv6.dst) / tcp).chksum
-            #         tcp.chksum = tcp_chksum
-            #
-            #         if tcp_check == tcp_chksum:
-            #             crc = "IPv6与TCP的校验和检查通过\r\nTCP的检验和为：{}".format(tcp_chksum)
-            #         else:
-            #             crc = "IPv6或TCP的校验和出错"
-            #     elif packet.haslayer(UDP):
-            #         udp = packet[UDP]
-            #         udp_chksum = udp.chksum
-            #         udp.chksum = None
-            #
-            #         udp_check = (IPv6(src=ipv6.src, dst=ipv6.dst) / udp).chksum
-            #         udp.chksum = udp_chksum
-            #
-            #         if udp_check == udp_chksum:
-            #             crc = "IPv6与UDP的校验和检查通过\r\nUDP的检验和为：{}".format(udp_chksum)
-            #         else:
-            #             crc = "IPv6或UDP的校验和出错"
             if packet.haslayer(IP):
                 ip = packet[IP]
                 ip_chksum = ip.chksum
