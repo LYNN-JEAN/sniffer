@@ -57,28 +57,22 @@ class PacketSnifferThread(QThread):
             src = packet[Ether].src
             dst = packet[Ether].dst
             type = packet[Ether].type
-            types = {0x0800: 'IPv4', 0x0806: 'ARP', 0x86dd: 'IPv6', 0x88cc: 'LLDP', 0x891D: 'TTE'}
-            if type in types:
-                proto = types[type]
-            else:
-                proto = 'LOOP'
+            proto = Ether.fields_desc[2].i2repr(Ether(), type)
 
             if proto == 'IPv4':
                 protos = {1: 'ICMP', 2: 'IGMP', 4: 'IP', 6: 'TCP', 8: 'EGP', 9: 'IGP', 17: 'UDP', 41: 'IPv6', 50: 'ESP',
                           51: 'AH', 58: 'ICMPv6', 89: 'OSPF'}
                 src = packet[IP].src
                 dst = packet[IP].dst
-                id = packet[IP].proto
-                if id in protos:
-                    proto = protos[id]
+                proto_id = packet[IP].proto
+                proto = packet[IP].get_field('proto').i2s.get(proto_id, 'IPv4')
+                if proto_id in protos:
+                    proto = protos[proto_id]
             elif proto == 'IPv6':
-                protos = {1: 'ICMP', 2: 'IGMP', 4: 'IP', 6: 'TCP', 8: 'EGP', 9: 'IGP', 17: 'UDP', 41: 'IPv6', 50: 'ESP',
-                          51: 'AH', 58: 'ICMPv6', 89: 'OSPF'}
                 src = packet[IPv6].src
                 dst = packet[IPv6].dst
-                id = packet[IPv6].nh
-                if id in protos:
-                    proto = protos[id]
+                proto_id = packet[IPv6].nh
+                proto = packet[IPv6].get_field('nh').i2s.get(proto_id, 'IPv6')
 
             # tcp
             if packet.haslayer(TCP):
