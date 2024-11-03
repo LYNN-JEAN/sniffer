@@ -100,7 +100,7 @@ class PacketSnifferThread(QThread):
                     proto = protos[dport]
 
             # 校验和
-            crc = None
+            check = None
             if packet.haslayer(IP):
                 ip = packet[IP]
                 ip_chksum = ip.chksum
@@ -117,10 +117,10 @@ class PacketSnifferThread(QThread):
                     tcp.chksum = tcp_chksum
                     # print(tcp_chksum, "计算出的TCP检验和：", tcp_check)
                     if ip_check == ip_chksum and tcp_check == tcp_chksum:
-                        crc = "IP与TCP的校验和检查通过\r\nIP的校验和为：{chksum_ip}\r\nTCP的检验和为：{chksum_tcp}".format(
+                        check = "IP与TCP的校验和检查通过\r\nIP的校验和为：{chksum_ip}\r\nTCP的检验和为：{chksum_tcp}".format(
                             chksum_ip=ip_chksum, chksum_tcp=tcp_chksum)
                     else:
-                        crc = "IP或TCP的校验和出错"
+                        check = "IP或TCP的校验和出错"
                 elif packet.haslayer(UDP):
                     udp = packet[UDP]
                     udp_chksum = udp.chksum
@@ -130,15 +130,15 @@ class PacketSnifferThread(QThread):
                     udp.chksum = udp_chksum
 
                     if ip_check == ip_chksum and udp_check == udp_chksum:
-                        crc = "IP与UDP的校验和检查通过\r\nIP的校验和为：{chksum_ip}\r\nUDP的检验和为：{chksum_udp}".format(
+                        check = "IP与UDP的校验和检查通过\r\nIP的校验和为：{chksum_ip}\r\nUDP的检验和为：{chksum_udp}".format(
                             chksum_ip=ip_chksum, chksum_udp=udp_chksum)
                     else:
-                        crc = "IP或UDP的校验和出错"
+                        check = "IP或UDP的校验和出错"
                 else:
                     if ip_check == ip_chksum:
-                        crc = "IP的校验和检查通过\r\nIP的校验和为：{}".format(ip_chksum)
+                        check = "IP的校验和检查通过\r\nIP的校验和为：{}".format(ip_chksum)
                     else:
-                        crc = "IP的校验和出错"
+                        check = "IP的校验和出错"
 
             packet_info["time"] = packet_time
             packet_info["src"] = src
@@ -147,7 +147,7 @@ class PacketSnifferThread(QThread):
             packet_info["len"] = str(len(packet))
             packet_info["info"] = packet.summary()
             packet_info["packet"] = packet
-            packet_info["crc"] = crc
+            packet_info["check"] = check
             packet_info["stream"] = stream_id
             self.packet_captured.emit(packet_info)
 

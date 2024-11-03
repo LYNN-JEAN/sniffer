@@ -173,11 +173,11 @@ class NetworkSnifferUI(QWidget):
         layout.addWidget(self.packet_details)
 
         # 校验和显示
-        self.crc_label = QLabel(self)
-        self.crc_label.setAlignment(Qt.AlignCenter)
-        self.crc_label.setStyleSheet("color: rgba(0, 0, 0, 1.0);")
-        self.crc_label.setVisible(False)  # 初始化为不可见
-        layout.addWidget(self.crc_label)
+        self.check_label = QLabel(self)
+        self.check_label.setAlignment(Qt.AlignCenter)
+        self.check_label.setStyleSheet("color: rgba(0, 0, 0, 1.0);")
+        self.check_label.setVisible(False)  # 初始化为不可见
+        layout.addWidget(self.check_label)
 
         self.opacity = 1.0  # 初始透明度
         self.timer = QTimer(self)
@@ -315,11 +315,11 @@ class NetworkSnifferUI(QWidget):
         self.packet_details.setText(hexdump(packet, dump=True))
 
         # 校验和信息
-        if self.packet_data[row]["crc"] is not None:
-            self.crc_label.setText(self.packet_data[row]["crc"])
+        if self.packet_data[row]["check"] is not None:
+            self.check_label.setText(self.packet_data[row]["check"])
             self.opacity = 1.0  # 重置透明度
-            self.crc_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 设置初始透明度
-            self.crc_label.setVisible(True)
+            self.check_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 设置初始透明度
+            self.check_label.setVisible(True)
 
         self.timer.start(15)  # 15秒后消失
 
@@ -410,10 +410,10 @@ class NetworkSnifferUI(QWidget):
         self.opacity -= 0.01  # 每次淡出一点
         if self.opacity <= 0:
             self.opacity = 0
-            self.crc_label.setVisible(False)  # 隐藏标签
+            self.check_label.setVisible(False)  # 隐藏标签
             self.timer.stop()  # 停止定时器
         else:
-            self.crc_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 更新透明度
+            self.check_label.setStyleSheet(f"color: rgba(0, 0, 0, {self.opacity});")  # 更新透明度
 
     # 创建右键菜单
     def show_context_menu(self, pos):
