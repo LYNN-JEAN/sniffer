@@ -39,14 +39,10 @@ class PacketSnifferThread(QThread):
         self.streams = dict()
 
     def run(self):
-        if self.interface == "All" and self.filter == "":
-            sniff(prn=self.process_packet, stop_filter=self.should_stop, store=False)
-        elif self.interface == "All":
-            sniff(prn=self.process_packet, filter=self.filter, stop_filter=self.should_stop, store=False)
-        elif self.filter == "":
+        if self.filter == "":
             sniff(prn=self.process_packet, iface=self.interface, stop_filter=self.should_stop, store=False)
         else:
-            sniff(iface=self.interface, prn=self.process_packet, filter=self.filter, stop_filter=self.should_stop,
+            sniff(prn=self.process_packet, iface=self.interface, filter=self.filter, stop_filter=self.should_stop,
                   store=False)
 
     def process_packet(self, packet):

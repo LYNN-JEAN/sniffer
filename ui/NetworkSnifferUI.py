@@ -1,3 +1,4 @@
+import psutil
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QSize, Qt, QTimer
 from PyQt5.QtGui import QIcon, QFont
@@ -5,12 +6,10 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QTextEdit, QLabel
     QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QTreeWidget, QTreeWidgetItem, QSizePolicy, \
     QListView, QLineEdit, QDialog, QMenu
 from scapy.all import sniff
-from scapy.arch.windows import get_windows_if_list
 from scapy.utils import hexdump, wrpcap
 
 from core.PacketSnifferThread import PacketSnifferThread, filter2bpf
 from ui.FilterDialog import FilterDialog
-
 from ui.StreamDialog import StreamDialog
 
 
@@ -187,8 +186,8 @@ class NetworkSnifferUI(QWidget):
 
     # 获取所有网络接口的名称
     def get_network_adapters(self):
-        adapters = get_windows_if_list()
-        return ["All"] + [adapter['name'] for adapter in adapters]
+        adapters = psutil.net_if_stats()
+        return [adapter for adapter in adapters]
 
     def start_sniffing(self):
         if not self.is_paused:  # 新的开始
